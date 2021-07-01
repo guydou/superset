@@ -375,9 +375,12 @@ class SqlMetric(Model, BaseMetric):
     )
     export_parent = "table"
 
+    def get_template_processor(self, **kwargs: Any) -> BaseTemplateProcessor:
+        return get_template_processor(table=self.table, database=self.table.database, **kwargs)
+
     def get_sqla_col(self, label: Optional[str] = None) -> Column:
         label = label or self.metric_name
-        sqla_col = literal_column(self.expression)
+        sqla_col = literal_column(self.get_template_processor().process_template(self.expression))
         return self.table.make_sqla_column_compatible(sqla_col, label)
 
     @property
@@ -846,7 +849,7 @@ class SqlaTable(  # pylint: disable=too-many-public-methods,too-many-instance-at
                 sqla_column = column(column_name)
             sqla_metric = self.sqla_aggregations[metric["aggregate"]](sqla_column)
         elif expression_type == utils.AdhocMetricExpressionType.SQL:
-            sqla_metric = literal_column(metric.get("sqlExpression"))
+            sqla_metric = literal_column(self.get_template_processor().process_template(metric.get("sqlExpression")))
         else:
             return None
 
