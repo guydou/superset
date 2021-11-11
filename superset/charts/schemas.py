@@ -22,6 +22,8 @@ from marshmallow.validate import Length, Range
 from marshmallow_enum import EnumField
 
 from superset.common.query_context import QueryContext
+from superset import app
+from superset.db_engine_specs.base import builtin_time_grains
 from superset.utils import schema as utils
 from superset.utils.core import (
     AnnotationType,
@@ -124,25 +126,8 @@ openapi_spec_methods_override = {
     },
 }
 
+config = app.config
 
-TIME_GRAINS = (
-    "PT1S",
-    "PT1M",
-    "PT5M",
-    "PT10M",
-    "PT15M",
-    "PT0.5H",
-    "PT1H",
-    "P1D",
-    "P1W",
-    "P1M",
-    "P0.25Y",
-    "P1Y",
-    "1969-12-28T00:00:00Z/P1W",  # Week starting Sunday
-    "1969-12-29T00:00:00Z/P1W",  # Week starting Monday
-    "P1W/1970-01-03T00:00:00Z",  # Week ending Saturday
-    "P1W/1970-01-04T00:00:00Z",  # Week ending Sunday
-)
 
 
 class ChartEntityResponseSchema(Schema):
@@ -497,7 +482,12 @@ class ChartDataProphetOptionsSchema(ChartDataPostProcessingOperationOptionsSchem
         description="Time grain used to specify time period increments in prediction. "
         "Supports [ISO 8601](https://en.wikipedia.org/wiki/ISO_8601#Durations) "
         "durations.",
-        validate=validate.OneOf(choices=TIME_GRAINS),
+        validate=validate.OneOf(choices=[
+            i
+            for i in {**builtin_time_grains, **config["TIME_GRAIN_ADDONS"]}.keys()
+            if i
+
+        ]),
         example="P1D",
         required=True,
     )
@@ -801,7 +791,11 @@ class ChartDataExtrasSchema(Schema):
         description="To what level of granularity should the temporal column be "
         "aggregated. Supports "
         "[ISO 8601](https://en.wikipedia.org/wiki/ISO_8601#Durations) durations.",
-        validate=validate.OneOf(choices=TIME_GRAINS),
+        validate=validate.OneOf(choices=[
+            i
+            for i in {**builtin_time_grains, **config["TIME_GRAIN_ADDONS"]}.keys()
+            if i
+        ]),
         example="P1D",
         allow_none=True,
     )
